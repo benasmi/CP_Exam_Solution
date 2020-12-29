@@ -137,13 +137,34 @@ const printer_service = spawnStateless(
         switch (payload.type){
             case Actions.DISTRIBUTOR_SEND_ITEM_TO_RESULTS:
                 const { results } = payload
-                console.log("Got results", results)
+                console.log("Got results. Writing to file", results)
+                writeToFile(results)
                 break;
         }
     }),
     Actors.PRINTER
 )
 
+
+function writeToFile(users){
+    const writer = fs.createWriteStream('results.txt', {
+        flags: 'a'
+    })
+
+    const nameIndentSpace = 20
+    const rankIndentSpace = 10
+
+    writer.write(`-------------------------------------------\n`)
+    writer.write(`|Name${' '.repeat(16)}|Rank${' '.repeat(8)}|Gpa${' '.repeat(4)}|\n`)
+    writer.write(`-------------------------------------------\n`)
+    users.forEach(item=>{
+        const {name, rank, gpa } = item
+        writer.write(`|${name}${' '.repeat(nameIndentSpace - name.length)}`)
+        writer.write(`|${rank}${' '.repeat(rankIndentSpace - (rank > 9 ? 0 : -1))}`)
+        writer.write(`|${gpa}${' '.repeat(7 - gpa.toString().length)}|\n`)
+    })
+    writer.write(`-------------------------------------------\n`)
+}
 
 
 function entry(){
