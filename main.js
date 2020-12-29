@@ -27,10 +27,9 @@ const TOTAL_USERS = 30;
 /**
  * Distributor service that distributes tasks to other services
  */
-const distributor_service = spawn(
+const distributor_service = spawnStateless(
     system,
     (
-        state={},
         payload,
         _) => {
         const { user } = payload
@@ -57,7 +56,7 @@ const distributor_service = spawn(
 );
 
 /**
- * Worker service child that distributes items to worker actors (children)
+ * Actual worker actor spawned from worker service
  */
 
 const worker_service_child = (parent, workerId) => spawnStateless(
