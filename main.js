@@ -1,6 +1,5 @@
 const fs = require('fs');
-const { start, spawn, dispatch, stop, spawnStateless } = require('nact');
-const system = start();
+const { start, spawn, dispatch, spawnStateless } = require('nact');
 
 const Actors = {
     DISTRIBUTOR: "DISTRIBUTOR",
@@ -22,6 +21,7 @@ const Actions = {
 }
 
 const TOTAL_USERS = 30;
+const system = start();
 
 
 /**
@@ -56,7 +56,7 @@ const distributor_service = spawnStateless(
 );
 
 /**
- * Actual worker actor spawned from worker service
+ * Worker child spawned from worker service
  */
 
 const worker_service_child = (parent, workerId) => spawnStateless(
@@ -116,7 +116,7 @@ const worker_service = spawn(
  * Collector service
  */
 const collector_service = spawn(
-    system,
+    distributor_service,
     ((state=[], payload, ctx) => {
         const {user, type} = payload
         switch (type){
@@ -130,6 +130,9 @@ const collector_service = spawn(
     Actors.COLLECTOR
 )
 
+/**
+ * Printer service
+ */
 const printer_service = spawnStateless(
     distributor_service,
     ((payload, ctx) => {
@@ -144,7 +147,10 @@ const printer_service = spawnStateless(
     Actors.PRINTER
 )
 
-
+/**
+ * Write results to file using filestream
+ * @param users
+ */
 function writeToFile(users){
     const writer = fs.createWriteStream('results.txt', {
         flags: 'a'
@@ -165,9 +171,36 @@ function writeToFile(users){
     writer.write(`-------------------------------------------\n`)
 }
 
+/**
+ * Simple filter criteria
+ * @param user
+ * @returns {*|null}
+ */
+const filterUser = (user) => user.rank % 3  === 0 ? user : null
 
-function entry(){
-    fs.readFile('users.json', (err, data) => {
+/**
+ * Splits users for workers
+ * based on name and gpa
+ * @param user
+ * @returns {string}
+ */
+function assignedWorker(user){
+    if(user.name.startsWith("A") || user.name.startsWith("B")){
+        return user.gpa <= 5 ? "0" : "1"
+    }else{
+        return user.gpa <= 5 ? "2" : "3"
+    }
+}
+
+
+/**
+ * Entry point
+ *
+ * Reads data from file
+ * and sends to main dispatcher
+ */
+function entry(filename){
+    fs.readFile(filename, (err, data) => {
         if (err) throw err;
         const users = JSON.parse(data);
         console.log("Read successfully!")
@@ -177,14 +210,4 @@ function entry(){
     });
 }
 
-const filterUser = (user) => user.rank % 2  === 0 ? user : null
-
-function assignedWorker(user){
-    if(user.name.startsWith("A") || user.name.startsWith("B")){
-        return user.gpa <= 5 ? "0" : "1"
-    }else{
-        return user.gpa <= 5 ? "2" : "3"
-    }
-}
-
-entry()
+entry('users.json')
